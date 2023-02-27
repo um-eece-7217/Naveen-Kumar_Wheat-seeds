@@ -1,0 +1,134 @@
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+import matplotlib.pyplot as plt
+import numpy as np
+from IPython.display import display
+from matplotlib.colors import ListedColormap
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+path=r"C:\Users\naveen\Downloads\seeds_dataset.txt" 
+features = ['Area',
+            'Perimeter',
+            'Compactness',
+            'Length of kernel',
+            'Width of kernel',
+            'Asymmetry coefficient',
+            ' groove.']
+df= pd.read_csv(path,header=None,names=features + ['target'])
+display(df)
+print(df.dtypes)
+# Converting the features from in X Array and class in Y array
+X = df.iloc[1:,[0,1,2,3,4,5,6]].values
+X=X.astype('float64')
+print(X.shape)
+y = df.loc[1:,'target']
+y=y.astype('int64')
+#print (y)
+print('Class labels:', np.unique(y))
+random_rows = [np.random.randint(0,209,73)] 
+random_cols = [np.random.randint(0,7,73)]
+random_rows,random_cols
+X[random_rows, random_cols] = np.nan
+display(X)
+#Counting the numbers of NaN value in Dataframe
+np.count_nonzero(np.isnan(X))
+import numpy as np
+#Create NumPy arrays
+arr = np.array(X)
+arr1 = np.array(y)
+# Use concatenate() to join two arrays
+con = np.column_stack((arr, arr1))
+print(con.shape)
+display(con)
+#Rechecking number of data values in array
+np.count_nonzero(np.isnan(X))
+#Converting the concatenated array into df 
+import numpy as np
+import pandas as pd
+df = pd.DataFrame(con)
+display (df)
+#Checking number of Nan values in df
+df.isnull().sum()
+#Replacing the Nan values with Mean
+from sklearn.impute import SimpleImputer
+import numpy as np
+imr = SimpleImputer(missing_values=np.nan, strategy='mean')
+imr = imr.fit(df.values)
+imputed_data = imr.transform(df.values)
+imputed_data
+#Printing imputed df
+df = pd.DataFrame(imputed_data)
+display (df)
+#Checking number of Nan values in df
+df.isnull().sum()
+X = df.iloc[:, [2,4]].values
+X=X.astype('float64')
+#print(X)
+y = df.loc[:, 7].values
+y=y.astype('int64')
+#print (y)
+print('Class labels:', np.unique(y))
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1,stratify=y)
+print('Labels counts in y:', np.bincount(y)[1:])
+print('Labels counts in y_train:', np.bincount(y_train)[1:])
+print('Labels counts in y_test:', np.bincount(y_test)[1:])
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+sc.fit(X_train)
+X_train_std = sc.transform(X_train)
+X_test_std = sc.transform(X_test)
+def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
+    # X = X.to_numpy()
+    # y = y.to_numpy()
+    # setup marker generator and color map
+    markers = ('o', 's', '^', 'v', '<')
+    colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
+    cmap = ListedColormap(colors[:len(np.unique(y))])
+
+# plot the decision surface
+x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                           np.arange(x2_min, x2_max, resolution))
+lab = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+lab = lab.reshape(xx1.shape)
+plt.contourf(xx1, xx2, lab, alpha=0.5, cmap=cmap)
+plt.xlim(xx1.min(), xx1.max())
+plt.ylim(xx2.min(), xx2.max())
+
+    # plot class examples
+for idx, cl in enumerate(np.unique(y)):
+        plt.scatter(x=X[y == cl, 0], 
+                    y=X[y == cl, 1],
+                    alpha=1.0, 
+                    c=colors[idx],
+                    marker=markers[idx], 
+                    label=f'Class {cl}', 
+                    edgecolor='black')
+    # highlight test examples
+if test_idx:
+   X_test, y_test = X[test_idx, :], y[test_idx]
+   plt.scatter(X_test[:, 0],
+                    X_test[:, 1],
+                    c='none',
+                    edgecolor='black',
+                    alpha=1.5,
+                    linewidth=1,
+                    marker='o',
+                    s=150, 
+                    label='Test set')
+     
+
+# Logistic Regression Classifier 
+log_reg = LogisticRegression()
+log_reg.fit(X_train_std,y_train)
+y_pred= log_reg.predict(X_test_std)
+print('predicted:',y_pred)
+print('true class:', np.array(y_test))
+plot_decision_regions(X, y, classifier=logistic_reg)
+plt.xlabel(df.columns[2])
+plt.ylabel(df.columns[4])
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
