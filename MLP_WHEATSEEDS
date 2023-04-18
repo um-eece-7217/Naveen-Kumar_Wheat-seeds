@@ -1,0 +1,60 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+from IPython.display import display
+path= r"C:\Users\naveen\Downloads\seeds_dataset.txt"
+features = ['Area',
+            'Perimeter',
+            'Compactness',
+            'Length ',
+            'Width',
+            'Asymmetry coefficient',
+            ' groove.']
+# Load the dataset
+df = pd.read_csv(path,header=None, delim_whitespace=True,names=features + ['target'])
+display(df)
+# Split the dataset into features (X) and target (y)
+X = df.iloc[:, :-1].values
+y = df.iloc[:, -1].values
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.7, random_state=62)
+
+# Create a logistic regression model
+logreg = LogisticRegression(random_state=62)
+
+# Train the model on the training set
+logreg.fit(X_train, y_train)
+
+# Evaluate the logistic regression model on the testing set
+logreg_pred = logreg.predict(X_test)
+logreg_acc = accuracy_score(y_test, logreg_pred)
+logreg_cm = confusion_matrix(y_test, logreg_pred)
+
+# Create a Multi-layer Perceptron model with two hidden layers of 10 neurons each
+mlp = MLPClassifier(hidden_layer_sizes=(4, 8), max_iter=500, random_state=62)
+
+# Train the model on the training set
+mlp.fit(X_train, y_train)
+
+# Evaluate the Multi-layer Perceptron model on the testing set
+mlp_pred = mlp.predict(X_test)
+mlp_acc = accuracy_score(y_test, mlp_pred)
+mlp_cm = confusion_matrix(y_test, mlp_pred)
+
+# Print the results
+print("Logistic regression accuracy:", logreg_acc)
+print("Multi-layer Perceptron accuracy:", mlp_acc)
+
+# Visualize the confusion matrices
+fig, ax = plt.subplots(1, 2, figsize=(15, 20))
+sns.heatmap(logreg_cm, annot=True, fmt='d', cmap='Greens', ax=ax[0])
+sns.heatmap(mlp_cm, annot=True, fmt='d', cmap='Greens', ax=ax[1])
+ax[0].set_title('Logistic Regression')
+ax[1].set_title('Multi-layer Perceptron')
+plt.show()
