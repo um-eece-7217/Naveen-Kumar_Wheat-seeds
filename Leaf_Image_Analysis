@@ -1,0 +1,142 @@
+from skimage.io import imshow, imread
+from skimage.color import rgb2gray
+from skimage.filters import threshold_otsu
+from skimage.morphology import closing
+from skimage.measure import label, regionprops, regionprops_table
+from sklearn.ensemble import GradientBoostingClassifier,RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from matplotlib import pyplot as plt
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+import os
+# get the filenames of the leaves under the directory “Leaves”
+image_path_list = os.listdir("Leaves")
+# looking at the first image
+i = 0
+image_path = image_path_list[i]
+image = rgb2gray(imread("Leaves/"+image_path))
+imshow(image)
+binary = image < threshold_otsu(image)
+ binary = closing(binary)
+ imshow(binary)
+label_img = label(binary)
+imshow(label_img)
+image_path
+table = pd.DataFrame(regionprops_table(label_img, image,
+                                       ['convex_area', 'area',
+                                        'eccentricity', 'extent',                   
+                                        'inertia_tensor',
+                                        'major_axis_length', 
+                                        'minor_axis_length']))
+table['convex_ratio'] = table['area']/table['convex_area']
+table['label'] = image_path[5]
+table
+# get the filenames of the leaves under the directory “Leaves”
+image_path_list = os.listdir("Leaves")
+
+# create an empty dataframe to store the features and labels
+df = pd.DataFrame()
+
+# loop over all the images in the directory
+for i in range(len(image_path_list)):
+  image_path = image_path_list[i]
+  if image_path =="blobs.png":
+    continue
+  image = rgb2gray(imread("Leaves/"+image_path))
+  binary = image < threshold_otsu(image)
+  binary = closing(binary)
+  label_img = label(binary)
+  
+  # extract features for each region in the image
+  table = pd.DataFrame(regionprops_table(label_img, image,['convex_area', 'area', 'eccentricity', 'extent', 'inertia_tensor', 'major_axis_length', 'minor_axis_length', 'perimeter', 'solidity', 'image', 'orientation', 'moments_central', 'moments_hu', 'euler_number', 'equivalent_diameter', 'mean_intensity', 'bbox']))
+  
+  # calculate additional features from the extracted features
+  table['convex_ratio'] = table['area']/table['convex_area']
+  table['perimeter_area_ratio'] = table['perimeter']/table['area']
+  real_images = []
+  std = []
+  mean = []
+  percent25 = []
+  percent75 = []
+  
+  # crop the region from the original image and extract intensity features
+  for prop in regionprops(label_img): 
+      min_row, min_col, max_row, max_col = prop.bbox
+      img = image[min_row:max_row,min_col:max_col]
+      real_images += [img]
+      mean += [np.mean(img)]
+      std += [np.std(img)]
+      percent25 += [np.percentile(img, 25)] 
+      percent75 += [np.percentile(img, 75)]
+  
+  # add the intensity features to the dataframe
+  table['real_images'] = real_images
+  table['mean_intensity'] = mean
+  table['std_intensity'] = std
+  table['25th Percentile'] = mean
+  table['75th Percentile'] = std
+  table['iqr'] = table['75th Percentile'] - table['25th Percentile']
+  
+  # add the label and append to the main dataframe
+  table['label'] = image_path[5]
+  print(image_path[5],image_path)
+  df = pd.concat([df, table], axis=0)
+# select the features to use
+X = df[['iqr','75th Percentile','inertia_tensor-1-1',        'std_intensity','mean_intensity','25th Percentile',        'minor_axis_length', 'solidity', 'eccentricity']]
+        
+# select the target variable
+y = df['label']
+
+# split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=123, stratify=y)
+
+# create and train the three classifiers
+gbc = GradientBoostingClassifier(n_estimators=50, max_depth=3, random_state=42)
+gbc.fit(X_train, y_train)
+
+# Predict the labels of the test set
+y_pred_gbc = gbc.predict(X_test)
+
+# Print classification report and accuracy score
+print("Gradient Boosting Classifier")
+print(classification_report(y_test, y_pred_gbc))
+print(f"Test Accuracy: {gbc.score(X_test, y_test)*100:.2f}%")
+# Random Forest Classifier
+rfc = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=123)
+rfc.fit(X_train, y_train)
+
+# Predict the labels of the test set
+y_pred_rfc = rfc.predict(X_test)
+
+# Print classification report and accuracy score
+print("Random Forest Classifier")
+print(classification_report(y_test, y_pred_rfc))
+print(f"Test Accuracy: {rfc.score(X_test, y_test)*100:.2f}%")
+# SVM Classifier
+from sklearn.svm import SVC
+
+svm = SVC(kernel='linear', C=1, random_state=123)
+svm.fit(X_train, y_train)
+
+# Predict the labels of the test set
+y_pred_svm = svm.predict(X_test)
+
+# Print classification report and accuracy score
+print("SVM Classifier")
+print(classification_report(y_test, y_pred_svm))
+print(f"Test Accuracy: {svm.score(X_test, y_test)*100:.2f}%")
+from sklearn.metrics import plot_confusion_matrix
+
+# Plot confusion matrix for Gradient Boosting Classifier
+plot_confusion_matrix(gbc, X_test, y_test, display_labels=np.unique(y), cmap=plt.cm.Blues)
+plt.title("Gradient Boosting Classifier")
+
+# Plot confusion matrix for Random Forest Classifier
+plot_confusion_matrix(rfc, X_test, y_test, display_labels=np.unique(y), cmap=plt.cm.Blues)
+plt.title("Random Forest Classifier")
+
+# Plot confusion matrix for SVM Classifier
+plot_confusion_matrix(svm, X_test, y_test, display_labels=np.unique(y), cmap=plt.cm.Blues)
+plt.title("SVM Classifier")
